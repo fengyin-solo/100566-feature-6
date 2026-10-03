@@ -1,8 +1,10 @@
 import { SEED_ROWS } from './seed'
-import type { EntryRow } from './types'
+import type { EntryRow, StationAuditEntry } from './types'
 
 // 本地持久化：数据放在 localStorage 里，刷新、关掉再打开都还在。
-const STORAGE_KEY = 'district-heating:entries'
+// v2：换热站换成真实片区口径与数值字段，旧的占位种子作废，换键避免读到脏数据。
+const STORAGE_KEY = 'district-heating:entries:v2'
+const AUDIT_KEY = 'district-heating:station-audit:v1'
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
@@ -56,4 +58,41 @@ export function resetRows(key: string): EntryRow[] {
 
 export function storageKey(): string {
   return STORAGE_KEY
+}
+
+// 换热站操作记录单独存：它要长期保留，resetModule 重置台账也不能抹掉历史经办归属。
+let auditCache: StationAuditEntry[] | null = null
+
+function readAudit(): StationAuditEntry[] {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return []
+  }
+  const raw = window.localStorage.getItem(AUDIT_KEY)
+  if (!raw) {
+    return []
+  }
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as StationAuditEntry[]) : []
+  } catch {
+    return []
+  }
+}
+
+export function listAudit(): StationAuditEntry[] {
+  if (auditCache === null) {
+    auditCache = readAudit()
+  }
+  return auditCache
+}
+
+export function saveAudit(entries: StationAuditEntry[]): void {
+  auditCache = entries
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.setItem(AUDIT_KEY, JSON.stringify(entries))
+  }
+}
+
+export function nextAuditId(): number {
+  return listAudit().reduce((max, entry) => Math.max(max, Number(entry.id) || 0), 0) + 1
 }

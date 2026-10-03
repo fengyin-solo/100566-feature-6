@@ -47,7 +47,7 @@
           <td>{{ row.status }}</td>
           <td class="row-actions">
             <button
-              v-for="action in actions"
+              v-for="action in actionsFor(row)"
               :key="action"
               class="link"
               type="button"
@@ -83,9 +83,9 @@ import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('heatnotice')
 const columns = ["通知编号", "影响片区", "停暖原因", "计划开始", "计划恢复", "通知方式", "发布人", "通知状态"]
-const actions = ["提交拟稿", "发布通知", "撤销通知"]
-const statuses = ["待拟稿", "待发布", "已发布", "已撤销"]
-const stats = [{"label": "待发布通知", "value": 0}, {"label": "已发布通知", "value": 0}, {"label": "影响片区数", "value": 0}]
+const actions = ["提交拟稿", "发布通知", "撤销通知", "办结移交"]
+const statuses = ["待办理", "待拟稿", "待发布", "已发布", "已办结", "已撤销"]
+const stats = ref([{ label: "移交待办理", value: 0 }, { label: "待发布通知", value: 0 }, { label: "已发布通知", value: 0 }])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -112,6 +112,10 @@ function openCreate() {
   errorMessage.value = '停暖通知单登记入口尚未接入审批流'
 }
 
+function actionsFor(row: EntryRow): string[] {
+  return String(row.status) === '待办理' ? ['办结移交'] : actions
+}
+
 function runAction(action: string, row: EntryRow) {
   errorMessage.value = ''
   const result = applyAction(meta.key, Number(row.id), action)
@@ -128,6 +132,12 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    const count = (status: string) => rows.value.filter((row) => String(row.status) === status).length
+    stats.value = [
+      { label: '移交待办理', value: count('待办理') },
+      { label: '待发布通知', value: count('待发布') },
+      { label: '已发布通知', value: count('已发布') },
+    ]
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '停暖通知列表读取失败'
   }
