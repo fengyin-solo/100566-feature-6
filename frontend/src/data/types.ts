@@ -32,6 +32,12 @@ export type ActionResult = {
   message: string
 }
 
+// 提交底账改动时随请求带上的值班身份：谁、代表哪个片区。
+export type OperatorContext = {
+  operator: string
+  district: string
+}
+
 export type OverviewResult = {
   cards: { label: string; value: number }[]
   modules: { name: string; created: number; pending: number; abnormal: number }[]
